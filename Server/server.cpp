@@ -12,11 +12,12 @@
 #include <string>
 #include <thread>
 #include <vector>
+#include <mutex>
 
 using namespace std;
 
 const int BUFF_SIZE = 1024;
-const int PORT = 1236;
+const int PORT = 5633;
 int counter = 0;
 
 struct Socket {
@@ -26,6 +27,7 @@ struct Socket {
 };
 
 int new_user_chatting(vector<Socket> &, int);
+mutex mtx;
 
 int main() {
     // Сокет и его дескриптор
@@ -58,6 +60,7 @@ int main() {
 
     vector<Socket> data;
     socklen_t size = sizeof(data[0].adress);
+    vector<thread> threads;
 
     while(true) {
         Socket temp;
@@ -67,28 +70,18 @@ int main() {
             perror("accept");
             exit(3);
         } else {
-            switch (fork())
-            {
-            case -1:
-                send(data[counter].client, "Failed to connect =)\n", sizeof("Failed to connect =)\n"), 0);
-                close(data[counter].client);
-                break;
-
-            // Потомок
-            case 0:
-                new_user_chatting(data, counter);
-                break;
-            
-            default:
-                counter += 1;
-                break;
-            }
-         }
+            threads.push_back(thread(new_user_chatting, ref(data), counter));
+            counter++;
+        }
     }
+    for (auto& thread : threads) {
+        thread.join();
+}
     return 0;
  }
 
 int new_user_chatting(vector<Socket> &data, int count) {
+        mtx.unlock();
         cout << "IP: " << data[count].adress.sin_addr.s_addr << endl << endl;
         char buf[1024];
         send(data[count].client, "Введите имя пользователя", sizeof("Введите имя пользователя"), 0);
@@ -102,13 +95,23 @@ int new_user_chatting(vector<Socket> &data, int count) {
         while(true) {
             bytes_read = recv(data[count].client, buf, 1024, 0);
             if(bytes_read <= 0) break;
-            char* temp_buf = new char[1044];
-            strcpy(temp_buf, data[count].name);
-            strcat(temp_buf, ": ");
-            strcat(temp_buf, buf);
+            //  char* temp_buf = new char[1044];
+            //  strcpy(temp_buf, data[count].name);
+            //  strcat(temp_buf, ": ");
+            //  strcat(temp_buf, buf);
+            string send_buf;
+            send_buf += data[count].name;
+            send_buf += ": ";
+            send_buf += buf;
 
             if(strcmp(buf, "$(online)") == 0){
-                send(data[count].client, "Now online", sizeof("Now online"), 0);
+                string temp;
+                temp += "Now online: ";
+                for (Socket d: data){
+                    temp += d.name;
+                    temp += "\n";
+                } 
+                send(data[count].client, temp.c_str(), sizeof(temp), 0);
             } else if(strcmp(buf, "$(off)") == 0){
                 cout << "User with ip: " << data[count].adress.sin_addr.s_addr << " disconected\n";
                 counter -= 1;
@@ -118,10 +121,11 @@ int new_user_chatting(vector<Socket> &data, int count) {
             } else {
                 for (int i = 0; i < data.size() -1; i++) {
                     if (i != count)
-                        send(data[i].client, temp_buf, strlen(temp_buf), 0);
+                        send(data[i].client, send_buf.c_str(), send_buf.length(), 0);
                 }
             }
-            memset(temp_buf, 0, 1044);
+            //memset(temp_buf, 0, 1044);
+            send_buf.erase();
             memset(buf, 0, 1024);
         }
         return 0;

@@ -14,7 +14,6 @@
 
 using namespace std;
 
-const int PORT = 1236;
 
 int main(int argc, char* argv[]) {
     //cout << argv[1] << endl;
@@ -28,9 +27,9 @@ int main(int argc, char* argv[]) {
     }
 
     addr.sin_family = AF_INET;
-    addr.sin_port = htons(PORT); // или любой другой порт...
-    addr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
-    //addr.sin_addr.s_addr = inet_addr(argv[1]);
+    addr.sin_port = htons(atoi(argv[2])); // или любой другой порт...
+    //addr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
+    addr.sin_addr.s_addr = inet_addr(argv[1]);
 
     if(connect(server, (struct sockaddr *)&addr, sizeof(addr)) < 0) {
         perror("connect");
