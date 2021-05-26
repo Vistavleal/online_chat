@@ -53,10 +53,11 @@ int main() {
         perror("bind");
         exit(2);
     }
-    // Количество возможных подключений к серверу
-    listen(listener, 2);
     cout << "Server started at port: " << server_address.sin_port << endl
         << "with ip " << server_address.sin_addr.s_addr << endl << endl;
+
+    //  Устанавливаем максимальное количество подключений к серверу
+    listen(listener, 2);
 
     vector<Socket> data;
     socklen_t size = sizeof(data[0].adress);
@@ -95,10 +96,7 @@ int new_user_chatting(vector<Socket> &data, int count) {
         while(true) {
             bytes_read = recv(data[count].client, buf, 1024, 0);
             if(bytes_read <= 0) break;
-            //  char* temp_buf = new char[1044];
-            //  strcpy(temp_buf, data[count].name);
-            //  strcat(temp_buf, ": ");
-            //  strcat(temp_buf, buf);
+
             string send_buf;
             send_buf += data[count].name;
             send_buf += ": ";
@@ -118,8 +116,18 @@ int new_user_chatting(vector<Socket> &data, int count) {
                 send(data[count].client, "$(off)", sizeof("$(off)"), 0);
                 close(data[count].client);
                 data.erase(data.begin() + count);
+            } else if (buf[0] == '?' && (strlen(buf) >= 5)) {
+                string name;
+                for (int i = 1; i < strlen(buf);  i++)
+                    name += buf[i];
+                for (int i = 0; i < data.size(); i++) {
+                    if (data[i].name == name){
+                        name += " is online now\n";
+                        send(data[count].client, name.c_str(), name.length(), 0);
+                    }
+                }
             } else {
-                for (int i = 0; i < data.size() -1; i++) {
+                for (int i = 0; i < data.size() - 1; i++) {
                     if (i != count)
                         send(data[i].client, send_buf.c_str(), send_buf.length(), 0);
                 }
