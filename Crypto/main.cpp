@@ -18,7 +18,7 @@ int main()
         }
         std::cout << std::endl;
 
-        std::vector<char> decrypted = RSA_decrypt(&priv, mesg, encrypted);
+        std::vector<char> decrypted = RSA_decrypt(&priv, encrypted);
         std::cout << "Сообщение после шифрования: ";
         for (char element: decrypted)
                 std::cout << element;

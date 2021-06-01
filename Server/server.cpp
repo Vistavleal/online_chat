@@ -14,10 +14,12 @@
 #include <vector>
 #include <mutex>
 
+#include "../Crypto/hpp/RSA.hpp"
+
 using namespace std;
 
 const int BUFF_SIZE = 1024;
-const int PORT = 5634;
+const int PORT = 5633;
 int counter = 0;
 
 struct Socket
@@ -25,6 +27,7 @@ struct Socket
    char name[20];
     int client;
     sockaddr_in adress;
+    public_key pub;
 };
 
 int new_user_chatting(vector<Socket> &, int);
@@ -57,7 +60,7 @@ int main()
         perror("bind");
         exit(2);
     }
-    cout << "Server started at port: " << server_address.sin_port << endl
+    cout << "Server started at port: " << PORT << endl
         << "with ip " << server_address.sin_addr.s_addr << endl << endl;
 
     //  Устанавливаем максимальное количество подключений к серверу
@@ -88,6 +91,15 @@ int main()
 int new_user_chatting(vector<Socket> &data, int count) {
         mtx.unlock();
         cout << "IP: " << data[count].adress.sin_addr.s_addr << endl << endl;
+        // Получение открытого ключа пользователя
+//        char exp[2];
+            int exp[2];
+
+        recv(data[count].client, &exp, 1024, 0);
+        data[count].pub.exponental = exp[0];
+        data[count].pub.modules = exp[1];
+
+        // Окно ввода имени        
         char buf[1024];
         send(data[count].client, "Введите имя пользователя", sizeof("Введите имя пользователя"), 0);
         recv(data[count].client, data[count].name, 20, 0);
@@ -108,9 +120,9 @@ int new_user_chatting(vector<Socket> &data, int count) {
 
             if(strcmp(buf, "$(online)") == 0){
                 string temp;
-                temp += "Now online: ";
-                for (Socket d: data){
-                    temp += d.name;
+                temp += "\nNow online: \n";
+                for (int i = 0; i < data.size() -1; i++){
+                    temp += data[i].name;
                     temp += "\n";
                 } 
                 send(data[count].client, temp.c_str(), sizeof(temp), 0);
@@ -133,30 +145,47 @@ int new_user_chatting(vector<Socket> &data, int count) {
                     }
                 }
 
+            } 
                 // Личное сообщение
-            } else if(buf[0]== '>' && strlen(buf) >= 5  ) {
-                string name, buff;
-                for (int i = 1; i < 6; i++) 
-                    name += buf[i];
-                
-                buff += "Secret chat with ";
-                buff += data[count].name;
-                buff += ": ";
-                for (int i = 7; i < strlen(buf); i++)
-                    buff += buf[i];
-                    // FIXME
+            else if(strcmp(buf, "${secret}") == 0 )
+            {
+                char Name[50];
+                memset(Name, 0, 50);
+                string grt_msg, str_name;
                 bool is_send = false;
-                for (int i = 0; i < data.size() - 1; i++) {
-                    if (data[i].name == name){
-                        send(data[i].client, buff.c_str(), buff.length(), 0);
+                // Получение приветствия
+                recv(data[count].client, Name, sizeof(char)*50, 0);
+                str_name += Name;
+                grt_msg += "!!! ";
+                grt_msg += data[count].name;
+                grt_msg += ": ";
+                
+                int array_size;
+                recv(data[count].client, &array_size, sizeof(int), 0);
+
+                int secret[100];
+                // Получение зашифрованного сообщения
+                recv(data[count].client, secret, sizeof(secret), 0);
+
+                // Отправка нужному пользователю
+                for (int i = 0; i < data.size(); i++)
+                    if (str_name ==  data[i].name)
+                    {
+                        send(data[i].client, "<", sizeof("<"), 0);
+                        sleep(1);
+                        send(data[i].client, grt_msg.c_str(), sizeof(grt_msg), 0);
+                        sleep(1);
+                        send(data[i].client, &array_size, sizeof(int), 0);
+                        sleep(1);
+                        send(data[i].client, secret, sizeof(int)*100, 0);
                         is_send = true;
                     }
-                }
                 if (!is_send) 
-                {
-                    send(data[count].client, "No such user", sizeof("No such user"), 0);
-                }
-            } else {
+                    send(data[count].client, "No such user!", sizeof("No such user!"), 0);
+                
+            } 
+            else 
+            {
                 for (int i = 0; i < data.size() - 1; i++) {
                     if (i != count)
                         send(data[i].client, send_buf.c_str(), send_buf.length(), 0);

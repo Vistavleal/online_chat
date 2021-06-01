@@ -1,5 +1,10 @@
 #include "../hpp/RSA.hpp"
 
+
+/*
+        Создание открытого и закрытого ключа.
+        На вход поступают указатели на структуры
+*/
 void RSA_gen_keys(public_key* pub, private_key* priv)
 {
         long long p, q;
@@ -65,7 +70,7 @@ std::vector<long long> RSA_encrypt(public_key* pub, char* msg)
         строку по ASCII-коду.
         Ничего не возвращает, только изменяет переданную строку.
 */
-std::vector<char> RSA_decrypt(private_key* key, char* message, std::vector<long long> encrypted)
+std::vector<char> RSA_decrypt(private_key* key, std::vector<long long> encrypted)
 {
         std::vector<long long> temp;
         for (int i = 0; i < encrypted.size(); i+=2)
@@ -144,6 +149,9 @@ int* cmprss (int a)
                         temp[1] = i;
                         return temp;
                 }
+        temp[0] = 1;
+        temp[1] = a;
+        return temp;
 }
 
 // Быстрое возведение в степень

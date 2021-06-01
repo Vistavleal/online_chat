@@ -8,5 +8,7 @@ SOURCES := Crypto/cpp/*.cpp Client/client.cpp
 #HEADERS := $(shell find . -name '*.h')
 OUTPUT := Client/Client 
 
-all:  
-	g++ -g -o $(OUTPUT) $(SOURCES)
+server:  
+	g++ -g -o Server/server Server/*.cpp Crypto/cpp/*.cpp -pthread 
+client:
+	g++ -g -o Client/client Client/*.cpp Crypto/cpp/*.cpp
