@@ -17,10 +17,11 @@
 using namespace std;
 
 const int BUFF_SIZE = 1024;
-const int PORT = 5633;
+const int PORT = 5634;
 int counter = 0;
 
-struct Socket {
+struct Socket
+{
    char name[20];
     int client;
     sockaddr_in adress;
@@ -29,7 +30,8 @@ struct Socket {
 int new_user_chatting(vector<Socket> &, int);
 mutex mtx;
 
-int main() {
+int main() 
+{
     // Сокет и его дескриптор
     int listener;
     // Структура с адресом
@@ -39,7 +41,8 @@ int main() {
 
     //  Получение дескриптора сокета
     listener = socket(AF_INET, SOCK_STREAM, 0);
-    if(listener < 0) {
+    if(listener < 0)
+    {
         perror("socket");
         exit(1);
     }
@@ -49,7 +52,8 @@ int main() {
     server_address.sin_addr.s_addr = htonl(INADDR_ANY); // IP -адрес хоста
 
     // Именование сокета (связывание его с адресом хоста)
-    if(bind(listener, (struct sockaddr *)&server_address, sizeof(server_address))< 0) {
+    if(bind(listener, (struct sockaddr *)&server_address, sizeof(server_address))< 0) 
+    {
         perror("bind");
         exit(2);
     }
@@ -57,7 +61,7 @@ int main() {
         << "with ip " << server_address.sin_addr.s_addr << endl << endl;
 
     //  Устанавливаем максимальное количество подключений к серверу
-    listen(listener, 2);
+    listen(listener, 3);
 
     vector<Socket> data;
     socklen_t size = sizeof(data[0].adress);
@@ -116,6 +120,8 @@ int new_user_chatting(vector<Socket> &data, int count) {
                 send(data[count].client, "$(off)", sizeof("$(off)"), 0);
                 close(data[count].client);
                 data.erase(data.begin() + count);
+
+                // Проверка на онлайн одного юзера
             } else if (buf[0] == '?' && (strlen(buf) >= 5)) {
                 string name;
                 for (int i = 1; i < strlen(buf);  i++)
@@ -125,6 +131,30 @@ int new_user_chatting(vector<Socket> &data, int count) {
                         name += " is online now\n";
                         send(data[count].client, name.c_str(), name.length(), 0);
                     }
+                }
+
+                // Личное сообщение
+            } else if(buf[0]== '>' && strlen(buf) >= 5  ) {
+                string name, buff;
+                for (int i = 1; i < 6; i++) 
+                    name += buf[i];
+                
+                buff += "Secret chat with ";
+                buff += data[count].name;
+                buff += ": ";
+                for (int i = 7; i < strlen(buf); i++)
+                    buff += buf[i];
+                    // FIXME
+                bool is_send = false;
+                for (int i = 0; i < data.size() - 1; i++) {
+                    if (data[i].name == name){
+                        send(data[i].client, buff.c_str(), buff.length(), 0);
+                        is_send = true;
+                    }
+                }
+                if (!is_send) 
+                {
+                    send(data[count].client, "No such user", sizeof("No such user"), 0);
                 }
             } else {
                 for (int i = 0; i < data.size() - 1; i++) {
