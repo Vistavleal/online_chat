@@ -11,15 +11,16 @@
 
 #include <string>
 #include <iostream>
+#include "../Crypto/hpp/RSA.hpp"
 
 using namespace std;
 
 
 int main(int argc, char* argv[]) {
-    //cout << argv[1] << endl;
     int server;
     struct sockaddr_in addr;
 
+    // Создание сокета клиента 
     server = socket(AF_INET, SOCK_STREAM, 0);
     if(server < 0) {
         perror("socket");
