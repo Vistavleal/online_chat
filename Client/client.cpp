@@ -54,7 +54,8 @@ int main(int argc, char* argv[]) {
     if (result < 0) {
         cout << "Failed to fork\n";
         exit(1);
-     }else if (result > 0) {
+     } else if (result > 0) 
+     {
         // приём сообщений
         char respone_buf [1044] ;
         while (true) {
@@ -63,28 +64,72 @@ int main(int argc, char* argv[]) {
                 close(server);
                 return 0;
             }
-            else if(strcmp(respone_buf, "<") == 0)
+            else if(
+                respone_buf[0] == '$' && 
+                respone_buf[1] == '(' &&
+                respone_buf[2] == 'S' &&
+                respone_buf[3] == ')'
+            )
             {
-                char buffer[50];
-                // Приветствие от сервера
-                recv(server, buffer, sizeof(char)*50, 0);
-                // Получение размера массива
-                int arr_size;
-                recv(server, &arr_size, sizeof(int), 0);
-                // Получение зашифрованного сообщения 
-                int decrypted[100];
-                recv(server, decrypted, sizeof(int)*100, 0);
-                std::vector<long long> temp;
-                for (int i = 0; i < arr_size; i++)
-                    temp.push_back(decrypted[i]);
-                vector<char> vec_decrypted = RSA_decrypt(&priv, temp);
+                string response, buffer= respone_buf;
+                string ch = "";
+                buffer.erase(buffer.begin() + 0);
+                buffer.erase(buffer.begin() + 0);
+                buffer.erase(buffer.begin() + 0);
+                buffer.erase(buffer.begin() + 0);
+                buffer.erase(buffer.begin() + 0);
 
-                for (int i = 0; i < strlen(buffer); i++)
-                    cout << buffer[i];
-                cout << " ";
+                int arr_size = 0;
+                string temp;
 
-                for (auto element: vec_decrypted)
-                    cout << element;
+                // Вытаскиваем из строки размер массива
+                // UPD: только потом заметил, что он даже и не нужен =)
+                while (ch != ";")
+                {
+                    ch = buffer.at(0);
+                    if (ch != ";")
+                    {
+                        temp += ch;
+                        buffer.erase(buffer.begin() + 0);
+                    } else 
+                    {
+                        arr_size = atoi(temp.c_str());
+                        temp.erase();
+                        ch.erase();
+                        buffer.erase(buffer.begin() + 0);
+                        break;
+                    }
+                }
+                    
+                // Вытаскиваем зашифрованное сообщение и переводим его в числа
+                vector<long long> decrypt;
+                while (ch != ";")
+                {
+                    // Суть в том, что по сообщению проходимся по символьно и каждый символ проверяем
+                    ch = buffer.at(0);
+                    if (ch == ";")
+                        break;
+                        
+                    if (ch != ".")
+                    {
+                        temp += buffer.at(0);
+                        buffer.erase(buffer.begin()+0);
+                    } else 
+                    {
+                        buffer.erase(buffer.begin() + 0);
+                        decrypt.push_back(atoi(temp.c_str()));
+                        temp.erase();
+                    }
+                }                    
+
+                // Дешифровка 
+                vector<char> decrypted = RSA_decrypt(&priv, decrypt);
+
+                // Вывод
+                buffer.erase(buffer.begin() + 0);
+                cout << "From " << buffer << ": ";
+                for (auto elem: decrypted)
+                    cout << elem;
                 cout << endl;
             }
             else
@@ -98,7 +143,7 @@ int main(int argc, char* argv[]) {
         {
             getline(cin, temp_str);
             char* chat_buff = new char [temp_str.length()]; 
-            for (int i = 0; i < temp_str.length(); i++)
+            for (int i = 0; i <  temp_str.length(); i++)
             {
                 chat_buff[i] = temp_str.at(i);
             }
@@ -113,8 +158,14 @@ int main(int argc, char* argv[]) {
             }
             else if (chat_buff[0] == '>')
             {
+                /*
+                    Весь прикол в том, что всю нужную для шифрования/расшифрования
+                    сообщения закидываем в одну строку и её отправляем, чтобы не было
+                    проблем с синхронизацией клиента-сервера-клиента.
+                */
                 char secret [strlen(chat_buff)-7];
                 char name [5];
+
                 for (int i = 0; i < strlen(chat_buff)-6; i++)
                     secret[i] = chat_buff[i+7];
                 
@@ -126,18 +177,22 @@ int main(int argc, char* argv[]) {
                 for (int i = 0; i < vec_encrypted.size(); i++)
                     encrypted[i] = vec_encrypted.at(i);
 
-                // Отправка "маячка" на сервер
-                send(server, "${secret}", sizeof("${secret}"), 0);
-                sleep(1);
-                // Отправка имени получателя
-                send(server, name, sizeof(name), 0);
-                sleep(1);
-                // Размер зашифрованного сообщения
+
+                string temp;
+                temp += "$(S);";
+
                 int array_size = vec_encrypted.size();
-                send(server, &array_size, sizeof(int), 0);
-                sleep(1);
-                // Зашифрованное сообщение
-                send(server, encrypted, array_size*sizeof(int), 0); 
+                temp += to_string(array_size);
+                temp += ";";
+                for (int i = 0; i < vec_encrypted.size(); i++)
+                {
+                    temp += to_string(encrypted[i]);
+                    temp +=".";
+                }
+                temp += ";";
+                for (int i = 0; i < 5; i++)
+                    temp += name[i];
+                send(server, temp.c_str(), temp.length(), 0);
             }
              else
                 send(server, chat_buff, sizeof(chat_buff), 0);

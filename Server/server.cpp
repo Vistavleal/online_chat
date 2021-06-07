@@ -147,42 +147,39 @@ int new_user_chatting(vector<Socket> &data, int count) {
 
             } 
                 // Личное сообщение
-            else if(strcmp(buf, "${secret}") == 0 )
+            else if(
+                buf[0] == '$' && buf[1] == '(' &&
+                buf[2] == 'S' && buf[3] == ')'
+            ) 
             {
-                char Name[50];
-                memset(Name, 0, 50);
-                string grt_msg, str_name;
-                bool is_send = false;
-                // Получение приветствия
-                recv(data[count].client, Name, sizeof(char)*50, 0);
-                str_name += Name;
-                grt_msg += "!!! ";
-                grt_msg += data[count].name;
-                grt_msg += ": ";
-                
-                int array_size;
-                recv(data[count].client, &array_size, sizeof(int), 0);
+                string str_name;
+                int size = strlen(buf);
+                str_name += buf[size-5];
+                str_name += buf[size-4];
+                str_name += buf[size-3];
+                str_name += buf[size-2];
+                str_name += buf[size-1];
+               bool is_send = false;
+               string new_buff;
+               for (int i = 0; i < size; i ++)
+                    new_buff += buf[i];
+                int n_size = new_buff.length();
+                new_buff[size-5] = send_buf[0];
+                new_buff[size-4] = send_buf[1];
+                new_buff[size-3] = send_buf[2];
+                new_buff[size-2] = send_buf[3];
+                new_buff[size-1] = send_buf[4];
 
-                int secret[100];
-                // Получение зашифрованного сообщения
-                recv(data[count].client, secret, sizeof(secret), 0);
 
-                // Отправка нужному пользователю
-                for (int i = 0; i < data.size(); i++)
-                    if (str_name ==  data[i].name)
+                for (auto element: data)
+                    if (element.name == str_name)
                     {
-                        send(data[i].client, "<", sizeof("<"), 0);
-                        sleep(1);
-                        send(data[i].client, grt_msg.c_str(), sizeof(grt_msg), 0);
-                        sleep(1);
-                        send(data[i].client, &array_size, sizeof(int), 0);
-                        sleep(1);
-                        send(data[i].client, secret, sizeof(int)*100, 0);
+                        send(element.client, new_buff.c_str(), new_buff.length(), 0);
                         is_send = true;
                     }
-                if (!is_send) 
+
+               if (!is_send) 
                     send(data[count].client, "No such user!", sizeof("No such user!"), 0);
-                
             } 
             else 
             {
