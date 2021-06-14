@@ -54,8 +54,8 @@ int main(int argc, char* argv[]) {
     if (result < 0) {
         cout << "Failed to fork\n";
         exit(1);
-     } else if (result > 0) 
-     {
+    } else if (result > 0) 
+    {
         // приём сообщений
         char respone_buf [1044] ;
         while (true) {
@@ -194,7 +194,7 @@ int main(int argc, char* argv[]) {
                     temp += name[i];
                 send(server, temp.c_str(), temp.length(), 0);
             }
-             else
+            else
                 send(server, chat_buff, sizeof(chat_buff), 0);
         }
     }
